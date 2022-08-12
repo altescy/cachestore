@@ -17,7 +17,7 @@ pip install cachestore
 
 ### Python
 
-```pytnon
+```python
 from cachestore import Cache
 
 cache = Cache()

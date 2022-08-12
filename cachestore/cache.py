@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from functools import wraps
 from logging import getLogger
 from typing import Any, Callable, TypeVar, cast
@@ -51,6 +52,9 @@ class Cache:
                         self.formatter.write(file, artifact)
 
                 return artifact
+
+            setattr(wrapper, "__signature__", inspect.signature(func))
+            setattr(wrapper, "__annotations__", func.__annotations__)
 
             return wrapper
 

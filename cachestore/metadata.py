@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import datetime
 import inspect
+import json
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
@@ -90,3 +92,25 @@ class ExecutionInfo(NamedTuple):
 
     def hash(self, hasher: Hasher) -> str:
         return hasher(self)
+
+
+class CacheInfo(NamedTuple):
+    function: FunctionInfo
+    parameters: dict[str, Any]
+    executed_at: datetime.datetime
+    expired_at: datetime.datetime | None
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "function": {
+                    "name": self.function.name,
+                    "filename": str(self.function.filename),
+                    "source": self.function.source,
+                },
+            },
+        )
+
+    @classmethod
+    def from_json(cls, jsonstr: str) -> "CacheInfo":
+        ...

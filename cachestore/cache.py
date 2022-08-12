@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import datetime
 from functools import wraps
 from logging import getLogger
 from typing import Any, Callable, TypeVar, cast
 
 from cachestore.formatters import Formatter, PickleFormatter
 from cachestore.hashers import Hasher, PickleHasher
-from cachestore.metadata import ExecutionInfo, FunctionInfo
+from cachestore.metadata import CacheInfo, ExecutionInfo, FunctionInfo
 from cachestore.storages import LocalStorage, Storage
 
 DEFAULT_CACHE_DIR = ".cache"
@@ -28,7 +29,20 @@ class Cache:
         self.hasher = hasher or PickleHasher()
         self._function_registry: dict[str, FunctionInfo] = {}
 
-    def __call__(self) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    def __call__(
+        self,
+        expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
+    ) -> Callable[[Callable[..., T]], Callable[..., T]]:
+        expired_at: datetime.datetime | None = None
+        if isinstance(expire, int):
+            expired_at = datetime.datetime.now() + datetime.timedelta(days=expire)
+        elif isinstance(expire, datetime.timedelta):
+            expired_at = datetime.datetime.now() + expire
+        elif isinstance(expire, datetime.datetime):
+            expired_at = expire
+        elif isinstance(expire, datetime.date):
+            expired_at = datetime.datetime(year=expire.year, month=expire.month, day=expire.day)
+
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             funcinfo = FunctionInfo.build(func)
             self._function_registry[funcinfo.hash(self.hasher)] = funcinfo
@@ -37,6 +51,24 @@ class Cache:
             def wrapper(*args: Any, **kwargs: Any) -> T:
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
                 key = ".".join((funcinfo.hash(self.hasher), execinfo.hash(self.hasher)))
+                metakey = f"{key}-metadata"
+
+                if self.storage.exists(metakey):
+                    with self.storage.open(key, "r") as file:
+                        cacheinfo = CacheInfo.from_json(file.read())
+                    if cacheinfo.expired_at is not None and cacheinfo.expired_at >= datetime.datetime.now():
+                        logger.info("Cache was expired: %s", funcinfo.name)
+                        self.storage.remove(key)
+                        self.storage.remove(metakey)
+
+                cacheinfo = CacheInfo(
+                    function=funcinfo,
+                    parameters=execinfo.params,
+                    expired_at=expired_at,
+                    executed_at=datetime.datetime.now(),
+                )
+                with self.storage.open(key, "r") as file:
+                    file.write(cacheinfo.to_json())
 
                 if self.storage.exists(key):
                     logger.info("Cache exists: %s", funcinfo.name)

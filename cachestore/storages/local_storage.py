@@ -31,15 +31,16 @@ class LocalStorage(Storage):
             except (Exception, KeyboardInterrupt):
                 os.remove(filename)
                 raise
+            finally:
+                os.remove(lockfile)
 
     def remove(self, key: str) -> None:
         filename = self._root / key
         os.remove(filename)
 
     def exists(self, key: str) -> bool:
-        return Path(key).exists()
+        return (self._root / key).exists()
 
     def all(self) -> Iterator[str]:
         for filename in self._root.glob("*"):
-            if not filename.name.endswith(".lock"):
-                yield filename.name
+            yield filename.name

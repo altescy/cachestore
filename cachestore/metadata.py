@@ -14,8 +14,9 @@ class FunctionInfo(NamedTuple):
 
     @classmethod
     def build(cls, func: Callable[..., Any]) -> "FunctionInfo":
-        name = ".".join((func.__module__, func.__name__))
         filename = Path(inspect.getabsfile(func))
+        modulename = inspect.getmodulename(str(filename)) or ""
+        name = f"{modulename}.{func.__qualname__}"
         lines, _ = inspect.getsourcelines(func)
         source = "".join(lines)
         return cls(name, filename, source)

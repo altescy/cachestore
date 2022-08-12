@@ -16,6 +16,9 @@ isort = "^5.10.1"
 flake8 = "^4.0.1"
 mypy = "^0.950"
 
+[tool.poetry.scripts]
+cachestore = "cachestore.__main__:run"
+
 [tool.pysen]
 version = "0.10"
 

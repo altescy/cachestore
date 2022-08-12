@@ -16,9 +16,12 @@ class LocalStorage(Storage):
 
         self._root.mkdir(parents=True, exist_ok=True)
 
+    def __str__(self) -> str:
+        return f"LocalStorage(root={self._root.relative_to(Path.cwd())})"
+
     @contextmanager
-    def open(self, location: str, mode: str) -> Iterator[IO[Any]]:
-        filename = Path(location)
+    def open(self, key: str, mode: str) -> Iterator[IO[Any]]:
+        filename = self._root / key
         lockfile = filename.parent / (filename.name + ".lock")
         filename.parent.mkdir(parents=True, exist_ok=True)
         with FileLock(lockfile):
@@ -29,8 +32,14 @@ class LocalStorage(Storage):
                 os.remove(filename)
                 raise
 
-    def exists(self, location: str) -> bool:
-        return Path(location).exists()
+    def remove(self, key: str) -> None:
+        filename = self._root / key
+        os.remove(filename)
 
-    def get_artifact_location(self, funchash: str, exechash: str) -> str:
-        return str(self._root / funchash / exechash)
+    def exists(self, key: str) -> bool:
+        return Path(key).exists()
+
+    def all(self) -> Iterator[str]:
+        for filename in self._root.glob("*"):
+            if not filename.name.endswith(".lock"):
+                yield filename.name

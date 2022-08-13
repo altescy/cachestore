@@ -19,7 +19,7 @@ command line. Please see `--help` for more details.
 **Features**
 
 - Easily caching execution results by decorating target functions
-- Exporting the cached result into external storage to reuse them access different exeutions
+- Exporting caches into an external storage to reuse them access different exeutions
 - Detecting appropreate caches based on argumetns/source code of functions
 - Changing cache behavior via configuration file (see [exmaples](./examples))
 - Providing CLI tool to manage caches

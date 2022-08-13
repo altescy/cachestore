@@ -4,6 +4,7 @@ import argparse
 
 from cachestore import __version__
 from cachestore.commands import list as _list  # noqa: F401
+from cachestore.commands import prune  # noqa: F401
 from cachestore.commands import remove  # noqa: F401
 from cachestore.commands.subcommand import Subcommand
 

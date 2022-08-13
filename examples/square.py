@@ -9,7 +9,7 @@ cache = Cache()
 
 @cache()
 def square(x: int) -> int:
-    print(f"square is executed with {x}!")
+    print(f"square is executed with {x}")
     return x * x
 
 

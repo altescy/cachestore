@@ -42,6 +42,7 @@ class Cache:
         *,
         ignore: set[str] | None = None,
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
+        disable: bool = False,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:
         expired_at: datetime.datetime | None = None
         if isinstance(expire, int):
@@ -59,6 +60,10 @@ class Cache:
 
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
+                if disable:
+                    logger.info("[%s] Disable cache.", funcinfo.name)
+                    return func(*args, **kwargs)
+
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
                 if ignore:
                     for paramname in ignore:

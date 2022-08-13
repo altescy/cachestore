@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import inspect
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
@@ -14,6 +15,10 @@ class FunctionInfo(NamedTuple):
 
     @classmethod
     def build(cls, func: Callable[..., Any]) -> "FunctionInfo":
+        if hasattr(func, "__cachesore_funcinfo"):
+            funcinfo = getattr(func, "__cachesore_funcinfo")
+            assert isinstance(funcinfo, FunctionInfo)
+            return funcinfo
         filename = Path(inspect.getabsfile(func))
         modulename = inspect.getmodulename(str(filename)) or ""
         name = f"{modulename}.{func.__qualname__}"
@@ -23,6 +28,21 @@ class FunctionInfo(NamedTuple):
 
     def hash(self, hasher: Hasher) -> str:
         return hasher(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "filename": str(self.filename),
+            "source": self.source,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "FunctionInfo":
+        return cls(
+            name=d["name"],
+            filename=Path(d["filename"]),
+            source=d["source"],
+        )
 
 
 class ExecutionInfo(NamedTuple):
@@ -90,3 +110,27 @@ class ExecutionInfo(NamedTuple):
 
     def hash(self, hasher: Hasher) -> str:
         return hasher(self)
+
+
+class CacheInfo(NamedTuple):
+    function: FunctionInfo
+    parameters: dict[str, Any]
+    executed_at: datetime.datetime
+    expired_at: datetime.datetime | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "function": self.function.to_dict(),
+            "parameters": {k: repr(v) for k, v in self.parameters.items()},
+            "executed_at": self.executed_at.isoformat(),
+            "expired_at": self.expired_at.isoformat() if self.expired_at else None,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "CacheInfo":
+        return cls(
+            function=FunctionInfo.from_dict(d["function"]),
+            parameters=d["parameters"],
+            executed_at=datetime.datetime.fromisoformat(d["executed_at"]),
+            expired_at=datetime.datetime.fromisoformat(d["expired_at"]) if d["expired_at"] else None,
+        )

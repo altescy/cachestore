@@ -5,7 +5,7 @@ from cachestore import Cache, LocalStorage
 
 def test_cache(tmp_path: Path) -> None:
     cache_root = tmp_path / "cache"
-    cache = Cache(LocalStorage(cache_root))
+    cache = Cache("testcache", storage=LocalStorage(cache_root))
 
     @cache()
     def square(x: int) -> int:

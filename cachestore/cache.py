@@ -20,8 +20,11 @@ T = TypeVar("T")
 
 
 class Cache:
+    _cache_registry: list["Cache"] = []
+
     def __init__(
         self,
+        name: str | None = None,
         *,
         storage: Storage | None = None,
         formatter: Formatter | None = None,
@@ -31,27 +34,38 @@ class Cache:
     ) -> None:
         self.config = config or Config()
 
+        self._name = name
         self._storage = storage
         self._formatter = formatter
         self._hasher = hasher
         self._disable = disable
 
         self._settings: CacheSettings | None = None
-
-        self._name: str | None = None
         self._function_registry: dict[str, FunctionInfo] = {}
+
+        self._cache_registry.append(self)
+
+    @classmethod
+    def by_name(self, name: str) -> Cache | None:
+        for cache in self._cache_registry:
+            if cache.name == name:
+                return cache
+        return None
 
     @property
     def name(self) -> str:
         if self._name is None:
-            for name, module in sys.modules.items():
+            for name, module in list(sys.modules.items()):
                 try:
                     for varname, obj in module.__dict__.items():
                         if obj is self:
                             modulename = inspect.getmodulename(inspect.getabsfile(module))
                             self._name = f"{modulename}:{varname}"
+                            break
                 except AttributeError:
                     pass
+                if self._name is not None:
+                    break
             if self._name is None:
                 raise RuntimeError("Cannot get cache name.")
         return self._name

@@ -20,13 +20,15 @@ class ListCommand(Subcommand):
             cache_module, cache_name = cache_path.split(":", 1)
             cache = getattr(importlib.import_module(cache_module), cache_name)
 
-            table = Table(columns=["name", "function", "cache"])
+            table = Table(columns=["name", "function", "cache", "last_executed_at"])
             for funcinfo in cache.funcinfos():
+                cacheinfos = list(cache.info(funcinfo))
                 table.add(
                     {
                         "name": cache_path,
                         "function": funcinfo.name,
                         "cache": "✓" if cache.exists(funcinfo) else "",
+                        "last_executed_at": max(info.executed_at for info in cacheinfos).isoformat(),
                     }
                 )
 

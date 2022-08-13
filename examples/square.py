@@ -6,6 +6,9 @@ logging.basicConfig(level=logging.INFO)
 
 cache = Cache()
 
+print(f"{cache.name=}")
+print(f"{cache.settings=}")
+
 
 @cache()
 def square(x: int) -> int:

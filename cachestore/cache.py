@@ -106,6 +106,9 @@ class Cache:
     def _get_metakey(self, key: str) -> str:
         return f"metadata-{key}"
 
+    def _is_metakey(self, key: str) -> bool:
+        return key.startswith("metadata-")
+
     def __call__(
         self,
         *,
@@ -208,3 +211,12 @@ class Cache:
             metakey = self._get_metakey(key)
             with self.storage.open(metakey, "r") as file:
                 yield CacheInfo.from_dict(json.load(file))
+
+    def prune(self) -> None:
+        for key in self.storage.all():
+            if not any(
+                key.startswith(funchash) or key.startswith(self._get_metakey(funchash))
+                for funchash in self._function_registry
+            ):
+                logger.info("remove %s", key)
+                self.storage.remove(key)

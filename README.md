@@ -34,9 +34,9 @@ $ cachestore --help
 usage: cachestore
 
 positional arguments:
-  {list,remove}
+  {list,prune,remove}
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --version      show program's version number and exit
+  -h, --help           show this help message and exit
+  --version            show program's version number and exit
 ```

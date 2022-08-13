@@ -6,8 +6,8 @@ from cachestore.commands import main
 if os.environ.get("CACHESTORE_DEBUG"):
     LEVEL = logging.DEBUG
 else:
-    level_name = os.environ.get("CACHESTORE_LOG_LEVEL", "WARNING")
-    LEVEL = logging._nameToLevel.get(level_name, logging.WARNING)
+    level_name = os.environ.get("CACHESTORE_LOG_LEVEL", "INFO")
+    LEVEL = logging._nameToLevel.get(level_name, logging.INFO)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s", level=LEVEL)
 

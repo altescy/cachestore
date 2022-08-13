@@ -1,10 +1,13 @@
 import hashlib
 import io
 import pickle
-from typing import Any
+from configparser import SectionProxy
+from typing import Any, Type, TypeVar
 
 from cachestore.hashers.hasher import Hasher
 from cachestore.util import b62encode
+
+Self = TypeVar("Self", bound="Hasher")
 
 
 class PickleHasher(Hasher):
@@ -14,3 +17,7 @@ class PickleHasher(Hasher):
             pickle.dump(obj, buf)
             m.update(buf.getbuffer())
             return b62encode(m.digest())
+
+    @classmethod
+    def from_config(cls: Type[Self], config: SectionProxy) -> Self:
+        return cls()

@@ -1,6 +1,9 @@
 import abc
+from configparser import SectionProxy
 from contextlib import contextmanager
-from typing import IO, Any, Iterator
+from typing import IO, Any, Iterator, Type, TypeVar
+
+Self = TypeVar("Self", bound="Storage")
 
 
 class Storage(abc.ABC):
@@ -19,6 +22,10 @@ class Storage(abc.ABC):
 
     @abc.abstractmethod
     def all(self) -> Iterator[str]:
+        raise NotImplementedError
+
+    @classmethod
+    def from_config(cls: Type[Self], config: SectionProxy) -> Self:
         raise NotImplementedError
 
     def filter(self, prefix: str) -> Iterator[str]:

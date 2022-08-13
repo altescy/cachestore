@@ -1,22 +1,26 @@
 from __future__ import annotations
 
 import os
+from configparser import SectionProxy
 from contextlib import contextmanager
 from os import PathLike
 from pathlib import Path
-from typing import IO, Any, Iterator
+from typing import IO, Any, Iterator, Type, TypeVar
 
 from cachestore.common import FileLock
 from cachestore.storages.storage import Storage
+
+Self = TypeVar("Self", bound="LocalStorage")
 
 
 class LocalStorage(Storage):
     def __init__(self, root: str | PathLike | None = None) -> None:
         self._root = Path(root or Path.cwd()).absolute()
 
-        self._root.mkdir(parents=True, exist_ok=True)
-
     def __str__(self) -> str:
+        return f"LocalStorage(root={self._root.relative_to(Path.cwd())})"
+
+    def __repr__(self) -> str:
         return f"LocalStorage(root={self._root.relative_to(Path.cwd())})"
 
     @contextmanager
@@ -48,3 +52,7 @@ class LocalStorage(Storage):
     def filter(self, prefix: str) -> Iterator[str]:
         for filename in self._root.glob(f"{prefix}*"):
             yield filename.name
+
+    @classmethod
+    def from_config(cls: Type[Self], config: SectionProxy) -> Self:
+        return cls(root=config.get("storage.root"))

@@ -1,5 +1,8 @@
 import abc
-from typing import IO, Any, ClassVar
+from configparser import SectionProxy
+from typing import IO, Any, ClassVar, Type, TypeVar
+
+Self = TypeVar("Self", bound="Formatter")
 
 
 class Formatter(abc.ABC):
@@ -12,4 +15,8 @@ class Formatter(abc.ABC):
 
     @abc.abstractmethod
     def read(self, file: IO[Any]) -> Any:
+        raise NotImplementedError
+
+    @classmethod
+    def from_config(cls: Type[Self], config: SectionProxy) -> Self:
         raise NotImplementedError

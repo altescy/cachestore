@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import importlib
+import sys
 from pathlib import Path
 
 from cachestore.cache import Cache
@@ -20,7 +21,11 @@ class ListCommand(Subcommand):
             import_modules(args.include_package)
 
         cache_module, cache_name = args.cache.split(":", 1)
-        cache = getattr(importlib.import_module(cache_module), cache_name)
+        cache = getattr(importlib.import_module(cache_module), cache_name, Cache.by_name(cache_name))
+
+        if cache is None:
+            print(f"Given cache name is not found: {args.cache}", file=sys.stderr)
+            sys.exit(1)
 
         table = Table(columns=["name", "function", "filename", "cache", "last_executed_at"])
         for funcinfo in cache.funcinfos():

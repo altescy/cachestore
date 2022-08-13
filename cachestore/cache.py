@@ -3,18 +3,16 @@ from __future__ import annotations
 import datetime
 import inspect
 import json
-import os
+import sys
 from functools import wraps
 from logging import getLogger
 from typing import Any, Callable, Iterator, TypeVar, cast
 
-from cachestore.formatters import Formatter, PickleFormatter
-from cachestore.hashers import Hasher, PickleHasher
+from cachestore.config import CacheSettings, Config
+from cachestore.formatters import Formatter
+from cachestore.hashers import Hasher
 from cachestore.metadata import CacheInfo, ExecutionInfo, FunctionInfo
-from cachestore.storages import LocalStorage, Storage
-
-DEFAULT_CACHE_DIR = ".cache"
-DISABLE_CACHE = os.environ.get("CACHESTORE_DISABLE", "0").lower() in ("1", "true")
+from cachestore.storages import Storage
 
 logger = getLogger(__name__)
 
@@ -22,16 +20,85 @@ T = TypeVar("T")
 
 
 class Cache:
+    _cache_registry: list["Cache"] = []
+
     def __init__(
         self,
+        name: str | None = None,
+        *,
         storage: Storage | None = None,
         formatter: Formatter | None = None,
         hasher: Hasher | None = None,
+        disable: bool | None = None,
+        config: Config | None = None,
     ) -> None:
-        self.storage = storage or LocalStorage(DEFAULT_CACHE_DIR)
-        self.formatter = formatter or PickleFormatter()
-        self.hasher = hasher or PickleHasher()
+        self.config = config or Config()
+
+        self._name = name
+        self._storage = storage
+        self._formatter = formatter
+        self._hasher = hasher
+        self._disable = disable
+
+        self._settings: CacheSettings | None = None
         self._function_registry: dict[str, FunctionInfo] = {}
+
+        self._cache_registry.append(self)
+
+    @classmethod
+    def by_name(self, name: str) -> Cache | None:
+        for cache in self._cache_registry:
+            if cache.name == name:
+                return cache
+        return None
+
+    @property
+    def name(self) -> str:
+        if self._name is None:
+            for name, module in list(sys.modules.items()):
+                try:
+                    for varname, obj in module.__dict__.items():
+                        if obj is self:
+                            modulename = inspect.getmodulename(inspect.getabsfile(module))
+                            self._name = f"{modulename}:{varname}"
+                            break
+                except AttributeError:
+                    pass
+                if self._name is not None:
+                    break
+            if self._name is None:
+                raise RuntimeError("Cannot get cache name.")
+        return self._name
+
+    @property
+    def settings(self) -> CacheSettings:
+        if self._settings is None:
+            self._settings = self.config.settings(self.name)
+            if self._storage is not None:
+                self._settings.storage = self._storage
+            if self._formatter is not None:
+                self._settings.formatter = self._formatter
+            if self._hasher is not None:
+                self._settings.hasher = self._hasher
+            if self._disable is not None:
+                self._settings.disable = self._disable
+        return self._settings
+
+    @property
+    def storage(self) -> Storage:
+        return self.settings.storage
+
+    @property
+    def formatter(self) -> Formatter:
+        return self.settings.formatter
+
+    @property
+    def hasher(self) -> Hasher:
+        return self.settings.hasher
+
+    @property
+    def disable(self) -> bool:
+        return self.settings.disable
 
     def _get_key(self, funcinfo: FunctionInfo, execinfo: ExecutionInfo) -> str:
         return ".".join((funcinfo.hash(self.hasher), execinfo.hash(self.hasher)))
@@ -44,7 +111,7 @@ class Cache:
         *,
         ignore: set[str] | None = None,
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
-        disable: bool = DISABLE_CACHE,
+        disable: bool | None = None,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:
         expired_at: datetime.datetime | None = None
         if isinstance(expire, int):
@@ -55,6 +122,9 @@ class Cache:
             expired_at = expire
         elif isinstance(expire, datetime.date):
             expired_at = datetime.datetime(year=expire.year, month=expire.month, day=expire.day)
+
+        if disable is None:
+            disable = self.disable
 
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             funcinfo = FunctionInfo.build(func)

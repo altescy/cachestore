@@ -1,7 +1,10 @@
 import pickle
-from typing import IO, Any, ClassVar
+from configparser import SectionProxy
+from typing import IO, Any, ClassVar, Type, TypeVar
 
 from cachestore.formatters.formatter import Formatter
+
+Self = TypeVar("Self", bound="PickleFormatter")
 
 
 class PickleFormatter(Formatter):
@@ -13,3 +16,7 @@ class PickleFormatter(Formatter):
 
     def read(self, file: IO[Any]) -> Any:
         return pickle.load(file)
+
+    @classmethod
+    def from_config(cls: Type[Self], config: SectionProxy) -> Self:
+        return cls()

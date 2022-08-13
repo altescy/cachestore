@@ -32,6 +32,9 @@ def disabled_square(x: int) -> int:
 
 
 if __name__ == "__main__":
+    print(f"{cache.name=}")
+    print(f"{cache.settings=}")
+
     print(f"{square(2)=}")
     print(f"{square(2)=}")
     print(f"{square(3)=}")

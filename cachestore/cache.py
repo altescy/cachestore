@@ -39,6 +39,8 @@ class Cache:
 
     def __call__(
         self,
+        *,
+        ignore: set[str] | None = None,
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:
         expired_at: datetime.datetime | None = None
@@ -58,6 +60,9 @@ class Cache:
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
+                if ignore:
+                    for paramname in ignore:
+                        del execinfo.params[paramname]
                 key = self._get_key(funcinfo, execinfo)
                 metakey = self._get_metakey(key)
 

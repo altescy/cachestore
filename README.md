@@ -7,6 +7,12 @@
 
 Function Cache Management Tool for Python
 
+## About
+
+**CacheStore** provides a cache management system for Python functions by
+storing execution results into a external storage. You can resuse the
+cached result from the second time even accross different processes.
+
 ## Installation
 
 ```bash

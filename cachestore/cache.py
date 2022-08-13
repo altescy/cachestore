@@ -35,7 +35,7 @@ class Cache:
         return ".".join((funcinfo.hash(self.hasher), execinfo.hash(self.hasher)))
 
     def _get_metakey(self, key: str) -> str:
-        return f"{key}-metadata"
+        return f"metadata-{key}"
 
     def __call__(
         self,

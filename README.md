@@ -9,9 +9,20 @@ Function Cache Management Tool for Python
 
 ## About
 
-**CacheStore** provides a cache management system for Python functions by
+**CacheStore** is a cache management system for Python functions by
 storing execution results into a external storage. You can resuse the
-cached result from the second time even accross different processes.
+cached result from the second time even accross different executions.
+
+**cachestore** command enables you to manange the cached result from
+command line. Please see `--help` for more details.
+
+**Features**
+
+- Easily caching execution results by decorating target functions
+- Exporting the cached result into external storage to reuse them access different exeutions
+- Detecting appropreate caches based on argumetns/source code of functions
+- Changing cache behavior via configuration file (see [exmaples](./examples))
+- Providing CLI tool to manage caches
 
 ## Installation
 

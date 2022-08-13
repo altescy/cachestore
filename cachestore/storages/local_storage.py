@@ -44,3 +44,7 @@ class LocalStorage(Storage):
     def all(self) -> Iterator[str]:
         for filename in self._root.glob("*"):
             yield filename.name
+
+    def filter(self, prefix: str) -> Iterator[str]:
+        for filename in self._root.glob(f"{prefix}*"):
+            yield filename.name

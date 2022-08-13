@@ -64,17 +64,17 @@ class Cache:
                 if self.storage.exists(metakey):
                     with self.storage.open(metakey, "r") as file:
                         cacheinfo = CacheInfo.from_dict(json.load(file))
-                    if cacheinfo.expired_at is not None and cacheinfo.expired_at >= datetime.datetime.now():
-                        logger.info("Cache was expired: %s", funcinfo.name)
+                    if cacheinfo.expired_at is not None and cacheinfo.expired_at <= datetime.datetime.now():
+                        logger.info("[%s] Cache was expired, so remove existing artifact.", funcinfo.name)
                         self.storage.remove(key)
                         self.storage.remove(metakey)
 
-                if self.storage.exists(key) and (expired_at is None or expired_at < datetime.datetime.now()):
-                    logger.info("Cache exists: %s", funcinfo.name)
+                if self.storage.exists(key) and (expired_at is None or expired_at > datetime.datetime.now()):
+                    logger.info("[%s] Cache exists", funcinfo.name)
                     with self.storage.open(key, self.formatter.READ_MODE) as file:
                         artifact = cast(T, self.formatter.read(file))
                 else:
-                    logger.info("[%s] Cache does not exists.")
+                    logger.info("[%s] Cache does not exists.", funcinfo.name)
                     artifact = func(*args, **kwargs)
 
                     logger.info("[%s] Store new artifact.", funcinfo.name)
@@ -102,13 +102,11 @@ class Cache:
         return decorator
 
     def exists(self, func: Callable[..., Any] | FunctionInfo) -> bool:
-        if not isinstance(func, FunctionInfo):
-            func = FunctionInfo.build(func)
-        prefix = func.hash(self.hasher)
-        for key in self.storage.all():
-            if key.startswith(prefix):
-                return True
-        return False
+        current = datetime.datetime.now()
+        exists = False
+        for cacheinfo in self.info(func):
+            exists |= cacheinfo.expired_at is None or cacheinfo.expired_at > current
+        return exists
 
     def remove(self, func: Callable[..., Any] | FunctionInfo) -> None:
         if not isinstance(func, FunctionInfo):

@@ -20,8 +20,10 @@ class ListCommand(Subcommand):
         if args.include_package:
             import_modules(args.include_package)
 
-        cache_module, cache_name = args.cache.split(":", 1)
-        cache = getattr(importlib.import_module(cache_module), cache_name, Cache.by_name(cache_name))
+        cache = Cache.by_name(args.cache)
+        if cache is None and ":" in args.cache:
+            cache_module, cache_name = args.cache.split(":", 1)
+            cache = getattr(importlib.import_module(cache_module), cache_name, None)
 
         if cache is None:
             print(f"Given cache name is not found: {args.cache}", file=sys.stderr)

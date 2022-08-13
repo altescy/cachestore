@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import inspect
 import json
+import os
 from functools import wraps
 from logging import getLogger
 from typing import Any, Callable, Iterator, TypeVar, cast
@@ -13,6 +14,7 @@ from cachestore.metadata import CacheInfo, ExecutionInfo, FunctionInfo
 from cachestore.storages import LocalStorage, Storage
 
 DEFAULT_CACHE_DIR = ".cache"
+DISABLE_CACHE = os.environ.get("CACHESTORE_DISABLE", "0").lower() in ("1", "true")
 
 logger = getLogger(__name__)
 
@@ -39,7 +41,10 @@ class Cache:
 
     def __call__(
         self,
+        *,
+        ignore: set[str] | None = None,
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
+        disable: bool = DISABLE_CACHE,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:
         expired_at: datetime.datetime | None = None
         if isinstance(expire, int):
@@ -57,7 +62,14 @@ class Cache:
 
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
+                if disable:
+                    logger.info("[%s] Disable cache.", funcinfo.name)
+                    return func(*args, **kwargs)
+
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
+                if ignore:
+                    for paramname in ignore:
+                        del execinfo.params[paramname]
                 key = self._get_key(funcinfo, execinfo)
                 metakey = self._get_metakey(key)
 

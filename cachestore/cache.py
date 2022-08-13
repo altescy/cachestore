@@ -147,7 +147,7 @@ class Cache:
                 metakey = self._get_metakey(key)
 
                 if self.storage.exists(metakey):
-                    with self.storage.open(metakey, "r") as file:
+                    with self.storage.open(metakey, "rt") as file:
                         cacheinfo = CacheInfo.from_dict(json.load(file))
                     if cacheinfo.expired_at is not None and cacheinfo.expired_at <= datetime.datetime.now():
                         logger.info("[%s] Cache was expired, so remove existing artifact.", funcinfo.name)
@@ -173,7 +173,7 @@ class Cache:
                         expired_at=expired_at,
                         executed_at=datetime.datetime.now(),
                     )
-                    with self.storage.open(metakey, "w") as file:
+                    with self.storage.open(metakey, "wt") as file:
                         json.dump(cacheinfo.to_dict(), file)
 
                 return artifact
@@ -209,7 +209,7 @@ class Cache:
         prefix = func.hash(self.hasher)
         for key in self.storage.filter(prefix=prefix):
             metakey = self._get_metakey(key)
-            with self.storage.open(metakey, "r") as file:
+            with self.storage.open(metakey, "rt") as file:
                 yield CacheInfo.from_dict(json.load(file))
 
     def prune(self) -> None:

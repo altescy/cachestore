@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import importlib
 import os
 from configparser import SectionProxy
 from contextlib import contextmanager
 from os import PathLike
 from pathlib import Path
-from typing import IO, Any, Iterator, Type, TypeVar
+from typing import IO, Any, Callable, ContextManager, Iterator, Type, TypeVar
 
 from cachestore.common import FileLock
 from cachestore.storages.storage import Storage
@@ -14,8 +15,13 @@ Self = TypeVar("Self", bound="LocalStorage")
 
 
 class LocalStorage(Storage):
-    def __init__(self, root: str | PathLike | None = None) -> None:
+    def __init__(
+        self,
+        root: str | PathLike | None = None,
+        openfn: Callable[..., IO[Any]] | Callable[..., ContextManager[IO[Any]]] | None = None,
+    ) -> None:
         self._root = Path(root or Path.cwd()).absolute()
+        self._openfn = openfn or open
 
     def __str__(self) -> str:
         return f"LocalStorage(root={self._root.relative_to(Path.cwd())})"
@@ -30,7 +36,7 @@ class LocalStorage(Storage):
         filename.parent.mkdir(parents=True, exist_ok=True)
         with FileLock(lockfile):
             try:
-                with open(filename, mode) as fp:
+                with self._openfn(filename, mode) as fp:
                     yield fp
             except (Exception, KeyboardInterrupt):
                 os.remove(filename)
@@ -55,4 +61,12 @@ class LocalStorage(Storage):
 
     @classmethod
     def from_config(cls: Type[Self], config: SectionProxy) -> Self:
-        return cls(root=config.get("storage.root"))
+        root = config.get("storage.root")
+
+        if "storage.openfn" in config:
+            openfn_module, openfn_name = config.get("storage.openfn").rsplit(".", 1)
+            openfn = getattr(importlib.import_module(openfn_module), openfn_name, None)
+        else:
+            openfn = None
+
+        return cls(root=root, openfn=openfn)

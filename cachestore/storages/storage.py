@@ -20,3 +20,8 @@ class Storage(abc.ABC):
     @abc.abstractmethod
     def all(self) -> Iterator[str]:
         raise NotImplementedError
+
+    def filter(self, prefix: str) -> Iterator[str]:
+        for key in self.all():
+            if key.startswith(prefix):
+                yield key

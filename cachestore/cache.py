@@ -112,9 +112,8 @@ class Cache:
         if not isinstance(func, FunctionInfo):
             func = FunctionInfo.build(func)
         prefix = func.hash(self.hasher)
-        for key in self.storage.all():
-            if key.startswith(prefix):
-                self.storage.remove(key)
+        for key in self.storage.filter(prefix=prefix):
+            self.storage.remove(key)
 
     def funcinfos(self) -> list[FunctionInfo]:
         return list(self._function_registry.values())
@@ -123,8 +122,7 @@ class Cache:
         if not isinstance(func, FunctionInfo):
             func = FunctionInfo.build(func)
         prefix = func.hash(self.hasher)
-        for key in self.storage.all():
-            if key.startswith(prefix):
-                metakey = self._get_metakey(key)
-                with self.storage.open(metakey, "r") as file:
-                    yield CacheInfo.from_dict(json.load(file))
+        for key in self.storage.filter(prefix=prefix):
+            metakey = self._get_metakey(key)
+            with self.storage.open(metakey, "r") as file:
+                yield CacheInfo.from_dict(json.load(file))

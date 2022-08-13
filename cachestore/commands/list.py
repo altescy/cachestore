@@ -28,8 +28,11 @@ class ListCommand(Subcommand):
                         "name": cache_path,
                         "function": funcinfo.name,
                         "cache": "✓" if cache.exists(funcinfo) else "",
-                        "last_executed_at": max(info.executed_at for info in cacheinfos).isoformat(),
+                        "last_executed_at": max(info.executed_at for info in cacheinfos).isoformat()
+                        if cacheinfos
+                        else "",
                     }
                 )
 
+        table.sort("last_executed_at", desc=True)
         table.show()

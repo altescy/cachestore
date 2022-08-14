@@ -63,12 +63,20 @@ class ExecutionInfo(NamedTuple):
         params: dict[str, Any] = {}
         try:
             for key, param in signature.parameters.items():
-                assert position < len(arguments)
-                if param.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    assert arguments[position][0] is None and param.default == inspect.Parameter.empty
-                    params[key] = arguments[position][1]
-                    position += 1
-                if param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+                if position >= len(arguments):
+                    if param.default != inspect.Parameter.empty:
+                        params[key] = param.default
+                    elif param.kind == inspect.Parameter.VAR_POSITIONAL:
+                        params[key] = []
+                    elif param.kind == inspect.Parameter.VAR_KEYWORD:
+                        params[key] = {}
+                    else:
+                        raise AssertionError("This statement will be never executed.")
+                elif param.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    if arguments[position][0] is None and param.default == inspect.Parameter.empty:
+                        params[key] = arguments[position][1]
+                        position += 1
+                elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
                     if key == arguments[position][0] or arguments[position][0] is None:
                         params[key] = arguments[position][1]
                         position += 1
@@ -76,13 +84,19 @@ class ExecutionInfo(NamedTuple):
                         params[key] = param.default
                 elif param.kind == inspect.Parameter.VAR_POSITIONAL:
                     params[key] = []
-                    while position < len(arguments) and arguments[position][0] not in signature.parameters:
+                    while (
+                        position < len(arguments)
+                        and arguments[position][0] is None
+                        and arguments[position][0] not in signature.parameters
+                    ):
                         params[key].append(arguments[position][1])
                         position += 1
                 elif param.kind == inspect.Parameter.KEYWORD_ONLY:
-                    assert key == arguments[position][0], f"{key=}, {arguments[position][0]=}"
-                    params[key] = arguments[position][1]
-                    position += 1
+                    if key == arguments[position][0]:
+                        params[key] = arguments[position][1]
+                        position += 1
+                    elif param.default != inspect.Parameter.empty:
+                        params[key] = param.default
                 elif param.kind == inspect.Parameter.VAR_KEYWORD:
                     if key not in params:
                         params[key] = {}
@@ -91,7 +105,7 @@ class ExecutionInfo(NamedTuple):
                         position += 1
                     params[key] = dict(sorted(params[key].items()))
                 else:
-                    raise AssertionError("This statement is never executed.")
+                    raise AssertionError("This statement will be never executed.")
 
             for extrakey, value in arguments[position:]:
                 assert extrakey is not None, extrakey

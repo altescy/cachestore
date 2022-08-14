@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import inspect
 import json
-import sys
 from functools import wraps
 from logging import getLogger
 from typing import Any, Callable, Iterator, TypeVar, cast
@@ -13,6 +12,7 @@ from cachestore.formatters import Formatter
 from cachestore.hashers import Hasher
 from cachestore.metadata import CacheInfo, ExecutionInfo, FunctionInfo
 from cachestore.storages import Storage
+from cachestore.util import find_variable_path
 
 logger = getLogger(__name__)
 
@@ -55,25 +55,15 @@ class Cache:
     @property
     def name(self) -> str:
         if self._name is None:
-            for name, module in list(sys.modules.items()):
-                try:
-                    for varname, obj in module.__dict__.items():
-                        if obj is self:
-                            modulename = inspect.getmodulename(inspect.getabsfile(module))
-                            self._name = f"{modulename}:{varname}"
-                            break
-                except AttributeError:
-                    pass
-                if self._name is not None:
-                    break
-            if self._name is None:
-                raise RuntimeError("Cannot get cache name.")
+            self._name = find_variable_path(self)
+        if self._name is None:
+            raise RuntimeError("Cannot get cache name.")
         return self._name
 
     @property
     def settings(self) -> CacheSettings:
         if self._settings is None:
-            self._settings = self.config.settings(self.name)
+            self._settings = self.config.cache_settings(self.name)
             if self._storage is not None:
                 self._settings.storage = self._storage
             if self._formatter is not None:
@@ -114,66 +104,72 @@ class Cache:
         *,
         ignore: set[str] | None = None,
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
+        formatter: Formatter | None = None,
         disable: bool | None = None,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-        expired_at: datetime.datetime | None = None
-        if isinstance(expire, int):
-            expired_at = datetime.datetime.now() + datetime.timedelta(days=expire)
-        elif isinstance(expire, datetime.timedelta):
-            expired_at = datetime.datetime.now() + expire
-        elif isinstance(expire, datetime.datetime):
-            expired_at = expire
-        elif isinstance(expire, datetime.date):
-            expired_at = datetime.datetime(year=expire.year, month=expire.month, day=expire.day)
-
-        if disable is None:
-            disable = self.disable
-
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             funcinfo = FunctionInfo.build(func)
             self._function_registry[funcinfo.hash(self.hasher)] = funcinfo
 
+            function_settings = self.config.function_settings(f"{self.name} {funcinfo.name}")
+            if ignore is not None:
+                function_settings.ignore = ignore
+            if expire is not None:
+                function_settings.expire = expire
+            if disable is not None:
+                function_settings.disable = disable
+            if formatter is not None:
+                function_settings.formatter = formatter
+
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
+                disable = function_settings.disable
+                ignore = function_settings.ignore
+                expired_at = function_settings.expired_at
+                executed_at = datetime.datetime.now()
+
+                storage = self.storage
+                formatter = function_settings.formatter or self.formatter
+
                 if disable:
                     logger.info("[%s] Disable cache.", funcinfo.name)
                     return func(*args, **kwargs)
 
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
-                if ignore:
-                    for paramname in ignore:
-                        del execinfo.params[paramname]
+                for paramname in ignore:
+                    del execinfo.params[paramname]
+
                 key = self._get_key(funcinfo, execinfo)
                 metakey = self._get_metakey(key)
 
-                if self.storage.exists(metakey):
-                    with self.storage.open(metakey, "rt") as file:
+                if storage.exists(metakey):
+                    with storage.open(metakey, "rt") as file:
                         cacheinfo = CacheInfo.from_dict(json.load(file))
-                    if cacheinfo.expired_at is not None and cacheinfo.expired_at <= datetime.datetime.now():
+                    if cacheinfo.expired_at is not None and cacheinfo.expired_at <= executed_at:
                         logger.info("[%s] Cache was expired, so remove existing artifact.", funcinfo.name)
-                        self.storage.remove(key)
-                        self.storage.remove(metakey)
+                        storage.remove(key)
+                        storage.remove(metakey)
 
-                if self.storage.exists(key) and (expired_at is None or expired_at > datetime.datetime.now()):
+                if storage.exists(key) and (expired_at is None or expired_at > datetime.datetime.now()):
                     logger.info("[%s] Cache exists", funcinfo.name)
-                    with self.storage.open(key, self.formatter.READ_MODE) as file:
-                        artifact = cast(T, self.formatter.read(file))
+                    with self.storage.open(key, formatter.READ_MODE) as file:
+                        artifact = cast(T, formatter.read(file))
                 else:
                     logger.info("[%s] Cache does not exists.", funcinfo.name)
                     artifact = func(*args, **kwargs)
 
                     logger.info("[%s] Store new artifact.", funcinfo.name)
-                    with self.storage.open(key, self.formatter.WRITE_MODE) as file:
-                        self.formatter.write(file, artifact)
+                    with storage.open(key, formatter.WRITE_MODE) as file:
+                        formatter.write(file, artifact)
 
                     logger.info("[%s] Export metadata.", funcinfo.name)
                     cacheinfo = CacheInfo(
                         function=funcinfo,
                         parameters=execinfo.params,
                         expired_at=expired_at,
-                        executed_at=datetime.datetime.now(),
+                        executed_at=executed_at,
                     )
-                    with self.storage.open(metakey, "wt") as file:
+                    with storage.open(metakey, "wt") as file:
                         json.dump(cacheinfo.to_dict(), file)
 
                 return artifact

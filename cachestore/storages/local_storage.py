@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import os
 from configparser import SectionProxy
 from contextlib import contextmanager
@@ -10,6 +9,7 @@ from typing import IO, Any, Callable, ContextManager, Iterator, Type, TypeVar
 
 from cachestore.common import FileLock
 from cachestore.storages.storage import Storage
+from cachestore.util import safe_import_object
 
 Self = TypeVar("Self", bound="LocalStorage")
 
@@ -64,8 +64,7 @@ class LocalStorage(Storage):
         root = config.get("storage.root")
 
         if "storage.openfn" in config:
-            openfn_module, openfn_name = config.get("storage.openfn").rsplit(".", 1)
-            openfn = getattr(importlib.import_module(openfn_module), openfn_name, None)
+            openfn = safe_import_object(config["storage.openfn"])
         else:
             openfn = None
 

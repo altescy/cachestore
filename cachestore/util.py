@@ -65,7 +65,7 @@ def safe_import_module(modulename: str) -> ModuleType:
 
 
 def safe_import_object(path: str) -> Any:
-    if "." not in path and ":" in path:
+    if "." not in path and ":" not in path:
         raise ValueError("Cache name must be formatted as path.to.module:name.")
     if ":" in path:
         modulename, objname = path.rsplit(":", 1)

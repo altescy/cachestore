@@ -31,6 +31,18 @@ def disabled_square(x: int) -> int:
     return x * x
 
 
+@cache()
+def ignored_square_from_config(x: int, y: int) -> int:
+    print(f"ignored_square_from_config is executed with {x=} ignoring {y=}")
+    return x * x
+
+
+@cache()
+def disabled_square_from_config(x: int) -> int:
+    print(f"disabled_square_from_config is executed with {x}, this result is never cached")
+    return x * x
+
+
 if __name__ == "__main__":
     print(f"{cache.name=}")
     print(f"{cache.settings=}")
@@ -44,3 +56,7 @@ if __name__ == "__main__":
     print(f"{ignored_square(2, 4)=}")
     print(f"{disabled_square(2)=}")
     print(f"{disabled_square(2)=}")
+    print(f"{ignored_square_from_config(2, 3)=}")
+    print(f"{ignored_square_from_config(2, 4)=}")
+    print(f"{disabled_square_from_config(2)=}")
+    print(f"{disabled_square_from_config(2)=}")

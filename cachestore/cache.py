@@ -73,7 +73,7 @@ class Cache:
     @property
     def settings(self) -> CacheSettings:
         if self._settings is None:
-            self._settings = self.config.settings(self.name)
+            self._settings = self.config.cache_settings(self.name)
             if self._storage is not None:
                 self._settings.storage = self._storage
             if self._formatter is not None:
@@ -116,40 +116,40 @@ class Cache:
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
         disable: bool | None = None,
     ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-        expired_at: datetime.datetime | None = None
-        if isinstance(expire, int):
-            expired_at = datetime.datetime.now() + datetime.timedelta(days=expire)
-        elif isinstance(expire, datetime.timedelta):
-            expired_at = datetime.datetime.now() + expire
-        elif isinstance(expire, datetime.datetime):
-            expired_at = expire
-        elif isinstance(expire, datetime.date):
-            expired_at = datetime.datetime(year=expire.year, month=expire.month, day=expire.day)
-
-        if disable is None:
-            disable = self.disable
-
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             funcinfo = FunctionInfo.build(func)
             self._function_registry[funcinfo.hash(self.hasher)] = funcinfo
 
+            function_settings = self.config.function_settings(f"{self.name} {funcinfo.name}")
+            if ignore is not None:
+                function_settings.ignore = ignore
+            if expire is not None:
+                function_settings.expire = expire
+            if disable is not None:
+                function_settings.disable = disable
+
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
+                disable = function_settings.disable
+                ignore = function_settings.ignore
+                expired_at = function_settings.expired_at
+                executed_at = datetime.datetime.now()
+
                 if disable:
                     logger.info("[%s] Disable cache.", funcinfo.name)
                     return func(*args, **kwargs)
 
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
-                if ignore:
-                    for paramname in ignore:
-                        del execinfo.params[paramname]
+                for paramname in ignore:
+                    del execinfo.params[paramname]
+
                 key = self._get_key(funcinfo, execinfo)
                 metakey = self._get_metakey(key)
 
                 if self.storage.exists(metakey):
                     with self.storage.open(metakey, "rt") as file:
                         cacheinfo = CacheInfo.from_dict(json.load(file))
-                    if cacheinfo.expired_at is not None and cacheinfo.expired_at <= datetime.datetime.now():
+                    if cacheinfo.expired_at is not None and cacheinfo.expired_at <= executed_at:
                         logger.info("[%s] Cache was expired, so remove existing artifact.", funcinfo.name)
                         self.storage.remove(key)
                         self.storage.remove(metakey)
@@ -171,7 +171,7 @@ class Cache:
                         function=funcinfo,
                         parameters=execinfo.params,
                         expired_at=expired_at,
-                        executed_at=datetime.datetime.now(),
+                        executed_at=executed_at,
                     )
                     with self.storage.open(metakey, "wt") as file:
                         json.dump(cacheinfo.to_dict(), file)

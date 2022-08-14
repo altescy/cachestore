@@ -1,6 +1,6 @@
 # Examples
 
-This is a example of CacheStore including the following files:
+This is an example of CacheStore including the following files:
 
 - `square.py`: Python script with CacheStore
 - `cachestore.ini`: Configuration file of CacheStore
@@ -31,7 +31,7 @@ square:cache square.ignored_square  square.py ✓     2022-08-14 17:58:56
 square:cache square.disabled_square square.py
 ```
 
-You can also see more details by using subcommand `details -f <function name>`
+You can also see more details with subcommand `details -f <function name>`
 as follows:
 
 ```bash

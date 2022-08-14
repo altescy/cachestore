@@ -71,7 +71,7 @@ class ExecutionInfo(NamedTuple):
                     elif param.kind == inspect.Parameter.VAR_KEYWORD:
                         params[key] = {}
                     else:
-                        raise AssertionError("This statement will be never executed.")
+                        raise AssertionError("There are some missing arguments.")
                 elif param.kind == inspect.Parameter.POSITIONAL_ONLY:
                     if arguments[position][0] is None and param.default == inspect.Parameter.empty:
                         params[key] = arguments[position][1]

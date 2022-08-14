@@ -9,11 +9,29 @@ from cachestore.util import import_modules, safe_import_object
 
 @Subcommand.register("remove")
 class RemoveCommand(Subcommand):
+    """remove caches"""
+
     def setup(self) -> None:
-        self.parser.add_argument("cache")
-        self.parser.add_argument("-f", "--function", action="append", default=[])
-        self.parser.add_argument("-a", "--all", action="store_true")
-        self.parser.add_argument("--include-package", action="append", default=[])
+        self.parser.add_argument("cache", help="cache name")
+        self.parser.add_argument(
+            "-f",
+            "--function",
+            action="append",
+            default=[],
+            help="function names to remove cache",
+        )
+        self.parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="remove all caches of the specified cache",
+        )
+        self.parser.add_argument(
+            "--include-package",
+            action="append",
+            default=[],
+            help="additinoal packages to include",
+        )
 
     def run(self, args: argparse.Namespace) -> None:
         if args.include_package:

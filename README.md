@@ -6,9 +6,9 @@
 [![pypi version](https://img.shields.io/pypi/v/cachestore)](https://pypi.org/project/cachestore/)
 
 **CacheStore** is a simple cache management system for Python functions.
-You can resuse the cached result even accross different executions.
+You can reuse the cached results even accross different executions.
 
-**cachestore** command enables you to manange the cached result from command line.
+**cachestore** command enables you to manage the cached results from command line.
 Please see `--help` for more details.
 
 **Features**

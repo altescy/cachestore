@@ -11,9 +11,19 @@ from cachestore.util import import_modules, safe_import_object
 
 @Subcommand.register("list")
 class ListCommand(Subcommand):
+    """list functions and cache statuses"""
+
     def setup(self) -> None:
-        self.parser.add_argument("cache")
-        self.parser.add_argument("--include-package", action="append", default=[])
+        self.parser.add_argument(
+            "cache",
+            help="cache name",
+        )
+        self.parser.add_argument(
+            "--include-package",
+            action="append",
+            default=[],
+            help="additinoal packages to include",
+        )
 
     def run(self, args: argparse.Namespace) -> None:
         if args.include_package:
@@ -48,8 +58,15 @@ class ListCommand(Subcommand):
 
 @ListCommand.register("details")
 class DetailsCommand(ListCommand):
+    """list cache status details of specified function"""
+
     def setup(self) -> None:
-        self.parser.add_argument("-f", "--function", default=None)
+        self.parser.add_argument(
+            "-f",
+            "--function",
+            default=None,
+            help="function name to show details",
+        )
 
     def run(self, args: argparse.Namespace) -> None:
         if args.include_package:

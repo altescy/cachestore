@@ -123,7 +123,7 @@ class Cache:
 
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
-                disable = function_settings.disable
+                disable = self.disable if function_settings.disable is None else function_settings.disable
                 ignore = function_settings.ignore
                 expired_at = function_settings.expired_at
                 executed_at = datetime.datetime.now()

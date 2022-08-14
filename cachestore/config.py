@@ -36,7 +36,7 @@ class FunctionSettings:
     ignore: set[str] = dataclasses.field(default_factory=set)
     expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None
     formatter: Formatter | None = None
-    disable: bool = False
+    disable: bool | None = None
 
     @property
     def expired_at(self) -> datetime.datetime | None:

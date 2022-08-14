@@ -14,7 +14,6 @@ from cachestore.hashers import Hasher, PickleHasher
 from cachestore.storages import LocalStorage, Storage
 from cachestore.util import safe_import_object
 
-DEFAULT_CACHE_DIR = ".cachestore"
 DISABLE_CACHE = os.environ.get("CACHESTORE_DISABLE", "0").lower() in ("1", "true")
 
 logger = getLogger(__name__)
@@ -25,7 +24,7 @@ T = TypeVar("T")
 
 @dataclasses.dataclass
 class CacheSettings:
-    storage: Storage = dataclasses.field(default_factory=lambda: LocalStorage(DEFAULT_CACHE_DIR))
+    storage: Storage = dataclasses.field(default_factory=lambda: LocalStorage())
     formatter: Formatter = dataclasses.field(default_factory=lambda: PickleFormatter())
     hasher: Hasher = dataclasses.field(default_factory=lambda: PickleHasher())
     disable: bool = DISABLE_CACHE

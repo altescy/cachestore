@@ -11,6 +11,8 @@ from cachestore.common import FileLock
 from cachestore.storages.storage import Storage
 from cachestore.util import safe_import_object
 
+DEFAULT_ROOT_DIR = ".cachestore"
+
 Self = TypeVar("Self", bound="LocalStorage")
 
 
@@ -20,7 +22,7 @@ class LocalStorage(Storage):
         root: str | PathLike | None = None,
         openfn: Callable[..., IO[Any]] | Callable[..., ContextManager[IO[Any]]] | None = None,
     ) -> None:
-        self._root = Path(root or Path.cwd()).absolute()
+        self._root = Path(root or DEFAULT_ROOT_DIR).absolute()
         self._openfn = openfn or open
 
     def __str__(self) -> str:

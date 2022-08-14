@@ -150,7 +150,7 @@ class Cache:
                         storage.remove(key)
                         storage.remove(metakey)
 
-                if storage.exists(key) and (expired_at is None or expired_at > datetime.datetime.now()):
+                if storage.exists(key) and (expired_at is None or expired_at > executed_at):
                     logger.info("[%s] Cache exists", funcinfo.name)
                     with self.storage.open(key, formatter.READ_MODE) as file:
                         artifact = cast(T, formatter.read(file))

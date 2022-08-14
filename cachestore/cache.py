@@ -123,7 +123,7 @@ class Cache:
 
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
-                disable = function_settings.disable
+                disable = self.disable if function_settings.disable is None else function_settings.disable
                 ignore = function_settings.ignore
                 expired_at = function_settings.expired_at
                 executed_at = datetime.datetime.now()
@@ -150,7 +150,7 @@ class Cache:
                         storage.remove(key)
                         storage.remove(metakey)
 
-                if storage.exists(key) and (expired_at is None or expired_at > datetime.datetime.now()):
+                if storage.exists(key) and (expired_at is None or expired_at > executed_at):
                     logger.info("[%s] Cache exists", funcinfo.name)
                     with self.storage.open(key, formatter.READ_MODE) as file:
                         artifact = cast(T, formatter.read(file))

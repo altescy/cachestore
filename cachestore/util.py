@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import pkgutil
 import string
 import sys
+from types import ModuleType
+from typing import Any
 
 
 def b62encode(data: bytes) -> str:
@@ -33,7 +36,7 @@ def import_submodules(package_name: str) -> None:
     sys.path.append(".")
 
     # Import at top level
-    module = importlib.import_module(package_name)
+    module = safe_import_module(package_name)
     path = getattr(module, "__path__", [])
     path_string = "" if not path else path[0]
 
@@ -47,3 +50,39 @@ def import_submodules(package_name: str) -> None:
 def import_modules(module_names: list[str]) -> None:
     for module_name in module_names:
         import_submodules(module_name)
+
+
+def safe_import_module(modulename: str) -> ModuleType:
+    for name, module in list(sys.modules.items()):
+        try:
+            if name == modulename or (
+                hasattr(module, "__file__") and modulename == inspect.getmodulename(inspect.getabsfile(module))
+            ):
+                return module
+        except AttributeError:
+            pass
+    return importlib.import_module(modulename)
+
+
+def safe_import_object(path: str) -> Any:
+    if "." not in path and ":" in path:
+        raise ValueError("Cache name must be formatted as path.to.module:name.")
+    if ":" in path:
+        modulename, objname = path.rsplit(":", 1)
+    else:
+        modulename, objname = path.rsplit(".", 1)
+    module = safe_import_module(modulename)
+    return getattr(module, objname)
+
+
+def find_variable_path(obj: Any) -> str | None:
+    for modulename, module in list(sys.modules.items()):
+        if hasattr(module, "__file__"):
+            modulename = inspect.getmodulename(inspect.getabsfile(module)) or modulename
+        try:
+            for varname, value in module.__dict__.items():
+                if value is obj:
+                    return f"{modulename}:{varname}"
+        except AttributeError:
+            pass
+    return None

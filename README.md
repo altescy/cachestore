@@ -5,13 +5,20 @@
 [![License](https://img.shields.io/github/license/altescy/cachestore)](https://github.com/altescy/cachestore/blob/master/LICENSE)
 [![pypi version](https://img.shields.io/pypi/v/cachestore)](https://pypi.org/project/cachestore/)
 
-Function Cache Management Tool for Python
+**CacheStore** is a simple cache management system for Python functions.
+You can reuse the cached results even accross different executions.
 
-## About
+**cachestore** command enables you to manage the cached results from command line.
+Please see `--help` for more details.
 
-**CacheStore** provides a cache management system for Python functions by
-storing execution results into a external storage. You can resuse the
-cached result from the second time even accross different processes.
+**Features**
+
+- Caching execution results by decorating target functions easily
+- Exporting caches into an external storage to reuse them access different exeutions
+- Detecting appropreate caches based on argumetns/source code of functions
+- Changing cache behavior via configuration file (see [exmaples](./examples))
+- Providing a useful command line tool to manage caches
+- Written in pure Python, no external dependencies
 
 ## Installation
 

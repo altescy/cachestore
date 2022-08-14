@@ -25,49 +25,58 @@ class JsonFormatter(Formatter):
         return cls()
 
 
+cache = Cache()
+
+
+@cache()
+def square(x: int) -> int:
+    print(f"square is executed with {x}")
+    return x * x
+
+
+@cache(expire=-1)
+def expired_square(x: int) -> int:
+    print(f"expired_square is executed with {x}")
+    return x * x
+
+
+@cache(ignore={"y"})
+def ignored_square(x: int, y: int) -> int:
+    print(f"ignored_square is executed with {x=} ignoring {y=}")
+    return x * x
+
+
+@cache(disable=True)
+def disabled_square(x: int) -> int:
+    print(f"disabled_square is executed with {x}, this result is never cached")
+    return x * x
+
+
+@cache()
+def ignored_square_from_config(x: int, y: int) -> int:
+    print(f"ignored_square_from_config is executed with {x=} ignoring {y=}")
+    return x * x
+
+
+@cache()
+def disabled_square_from_config(x: int) -> int:
+    print(f"disabled_square_from_config is executed with {x}, this result is never cached")
+    return x * x
+
+
+@cache(formatter=JsonFormatter())
+def json_formatted_square(x: int) -> dict[str, int]:
+    print("json_formatted_square_from_comfing is executed and the result will be formatted as JSON.")
+    return {"result": x * x}
+
+
+@cache()
+def json_formatted_square_from_comfing(x: int) -> dict[str, int]:
+    print("json_formatted_square_from_comfing is executed and the result will be formatted as JSON.")
+    return {"result": x * x}
+
+
 if __name__ == "__main__":
-    cache = Cache()
-
-    @cache()
-    def square(x: int) -> int:
-        print(f"square is executed with {x}")
-        return x * x
-
-    @cache(expire=-1)
-    def expired_square(x: int) -> int:
-        print(f"expired_square is executed with {x}")
-        return x * x
-
-    @cache(ignore={"y"})
-    def ignored_square(x: int, y: int) -> int:
-        print(f"ignored_square is executed with {x=} ignoring {y=}")
-        return x * x
-
-    @cache(disable=True)
-    def disabled_square(x: int) -> int:
-        print(f"disabled_square is executed with {x}, this result is never cached")
-        return x * x
-
-    @cache()
-    def ignored_square_from_config(x: int, y: int) -> int:
-        print(f"ignored_square_from_config is executed with {x=} ignoring {y=}")
-        return x * x
-
-    @cache()
-    def disabled_square_from_config(x: int) -> int:
-        print(f"disabled_square_from_config is executed with {x}, this result is never cached")
-        return x * x
-
-    @cache(formatter=JsonFormatter())
-    def json_formatted_square(x: int) -> dict[str, int]:
-        print("json_formatted_square_from_comfing is executed and the result will be formatted as JSON.")
-        return {"result": x * x}
-
-    @cache()
-    def json_formatted_square_from_comfing(x: int) -> dict[str, int]:
-        print("json_formatted_square_from_comfing is executed and the result will be formatted as JSON.")
-        return {"result": x * x}
-
     print(f"{cache.name=}")
     print(f"{cache.settings=}")
 

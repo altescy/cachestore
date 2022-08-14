@@ -1,11 +1,10 @@
 import argparse
-import importlib
 import sys
 
 from cachestore.cache import Cache
 from cachestore.commands.subcommand import Subcommand
 from cachestore.common import Selector
-from cachestore.util import import_modules
+from cachestore.util import import_modules, safe_import_object
 
 
 @Subcommand.register("remove")
@@ -21,9 +20,8 @@ class RemoveCommand(Subcommand):
             import_modules(args.include_package)
 
         cache = Cache.by_name(args.cache)
-        if cache is None and ":" in args.cache:
-            cache_module, cache_name = args.cache.split(":", 1)
-            cache = getattr(importlib.import_module(cache_module), cache_name, None)
+        if cache is None:
+            cache = safe_import_object(args.cache)
 
         if cache is None:
             print(f"Given cache name is not found: {args.cache}", file=sys.stderr)

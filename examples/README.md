@@ -8,7 +8,7 @@ This is an example of CacheStore including the following files:
 ## Run example script with CacheStore
 
 Execute python script like below.
-Logs will be shown and you can see how to behave cached functions.
+Logs will be shown and you can see the behavior of cached functions.
 
 ```bash
 $ python square.py
@@ -36,11 +36,11 @@ as follows:
 
 ```bash
 $ cachestore list square:cache details -f square.square
-2022-08-14 18:00:58,724 - INFO - cachestore.config - Load config from cachestore.ini
-cache        function      filename  params executed_at         expired_at
-============ ============= ========= ====== =================== ==========
-square:cache square.square square.py x=3    2022-08-14 17:58:56
-square:cache square.square square.py x=2    2022-08-14 17:58:56
+2023-05-04 16:38:54,272 - INFO - cachestore.config - Load config from cachestore.ini
+cache        function      filename  params exec     executed_at         expired_at
+============ ============= ========= ====== ======== =================== ==========
+square:cache square.square square.py x=3    SYrUtuDS 2023-05-04 16:04:44
+square:cache square.square square.py x=2    d2dqSewi 2023-05-04 16:04:44
 ```
 
 By using `cachestore remove -f <function name>` command, you can remove all

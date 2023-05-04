@@ -190,28 +190,35 @@ class Cache:
     def exists(self, func: Callable[..., Any] | FunctionInfo) -> bool:
         current = datetime.datetime.now()
         exists = False
-        for cacheinfo in self.info(func):
+        for _, cacheinfo in self.info(func):
             exists |= cacheinfo.expired_at is None or cacheinfo.expired_at > current
         return exists
 
-    def remove(self, func: Callable[..., Any] | FunctionInfo) -> None:
+    def remove(
+        self,
+        func: Callable[..., Any] | FunctionInfo,
+        execution_prefix: str | None = None,
+    ) -> None:
         if not isinstance(func, FunctionInfo):
             func = FunctionInfo.build(func)
         prefix = func.hash(self.hasher)
+        if execution_prefix is not None:
+            prefix = f"{prefix}.{execution_prefix}"
         for key in self.storage.filter(prefix=prefix):
             self.storage.remove(key)
 
     def funcinfos(self) -> list[FunctionInfo]:
         return list(self._function_registry.values())
 
-    def info(self, func: Callable[..., Any] | FunctionInfo) -> Iterator[CacheInfo]:
+    def info(self, func: Callable[..., Any] | FunctionInfo) -> Iterator[tuple[str, CacheInfo]]:
         if not isinstance(func, FunctionInfo):
             func = FunctionInfo.build(func)
         prefix = func.hash(self.hasher)
         for key in self.storage.filter(prefix=prefix):
             metakey = self._get_metakey(key)
+            execkey = key.split(".", 1)[-1]
             with self.storage.open(metakey, "rt") as file:
-                yield CacheInfo.from_dict(json.load(file))
+                yield execkey, CacheInfo.from_dict(json.load(file))
 
     def prune(self) -> None:
         for key in self.storage.all():

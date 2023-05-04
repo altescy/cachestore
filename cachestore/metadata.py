@@ -28,7 +28,7 @@ class FunctionInfo(NamedTuple):
         lines, _ = inspect.getsourcelines(func)
         source = "".join(lines)
         with suppress(SyntaxError):
-            source = ASTNormalizer().visit(ast.parse(source)).dump()
+            source = ast.dump(ASTNormalizer().visit(ast.parse(source)))
         return cls(name, filename, source)
 
     def hash(self, hasher: Hasher) -> str:

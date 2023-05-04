@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from configparser import SectionProxy
 from contextlib import contextmanager
 from os import PathLike
@@ -41,14 +40,14 @@ class LocalStorage(Storage):
                 with self._openfn(filename, mode) as fp:
                     yield fp
             except (Exception, KeyboardInterrupt):
-                os.remove(filename)
+                filename.unlink()
                 raise
             finally:
-                os.remove(lockfile)
+                lockfile.unlink()
 
     def remove(self, key: str) -> None:
         filename = self._root / key
-        os.remove(filename)
+        filename.unlink()
 
     def exists(self, key: str) -> bool:
         return (self._root / key).exists()

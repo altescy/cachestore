@@ -24,9 +24,9 @@ T = TypeVar("T")
 
 @dataclasses.dataclass
 class CacheSettings:
-    storage: Storage = dataclasses.field(default_factory=lambda: LocalStorage())
-    formatter: Formatter = dataclasses.field(default_factory=lambda: PickleFormatter())
-    hasher: Hasher = dataclasses.field(default_factory=lambda: PickleHasher())
+    storage: Storage = dataclasses.field(default_factory=LocalStorage)
+    formatter: Formatter = dataclasses.field(default_factory=PickleFormatter)
+    hasher: Hasher = dataclasses.field(default_factory=PickleHasher)
     disable: bool = DISABLE_CACHE
 
 

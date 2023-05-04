@@ -221,9 +221,6 @@ class Cache:
 
     def prune(self) -> None:
         for key in self.storage.all():
-            if not any(
-                key.startswith(funchash) or key.startswith(self._get_metakey(funchash))
-                for funchash in self._function_registry
-            ):
+            if not any(key.startswith((funchash, self._get_metakey(funchash))) for funchash in self._function_registry):
                 logger.info("remove %s", key)
                 self.storage.remove(key)

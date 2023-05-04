@@ -52,7 +52,7 @@ class RemoveCommand(Subcommand):
             funcnames = set(args.function)
         else:
             funcnames = set()
-            candidates = [name for name, info in funcinfos.items()]
+            candidates = [name for name in funcinfos.keys()]
             if candidates:
                 selected_funcname = Selector()(candidates)
                 funcnames = set() if selected_funcname is None else {selected_funcname}

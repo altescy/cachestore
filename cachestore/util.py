@@ -8,6 +8,7 @@ import lzma
 import pkgutil
 import string
 import sys
+from contextlib import suppress
 from types import ModuleType
 from typing import Any, Callable
 
@@ -57,13 +58,11 @@ def import_modules(module_names: list[str]) -> None:
 
 def safe_import_module(modulename: str) -> ModuleType:
     for name, module in list(sys.modules.items()):
-        try:
+        with suppress(AttributeError):
             if name == modulename or (
                 hasattr(module, "__file__") and modulename == inspect.getmodulename(inspect.getabsfile(module))
             ):
                 return module
-        except AttributeError:
-            pass
     return importlib.import_module(modulename)
 
 
@@ -82,12 +81,10 @@ def find_variable_path(obj: Any) -> str | None:
     for modulename, module in list(sys.modules.items()):
         if hasattr(module, "__file__"):
             modulename = inspect.getmodulename(inspect.getabsfile(module)) or modulename
-        try:
+        with suppress(AttributeError):
             for varname, value in module.__dict__.items():
                 if value is obj:
                     return f"{modulename}:{varname}"
-        except AttributeError:
-            pass
     return None
 
 

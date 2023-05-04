@@ -172,6 +172,11 @@ class Cache:
                     with storage.open(metakey, "wt") as file:
                         json.dump(cacheinfo.to_dict(), file)
 
+                    # reopen artifact beacause if artifact is iterator,
+                    # it is consumed when saving cache.
+                    with self.storage.open(key, formatter.READ_MODE) as file:
+                        artifact = cast(T, formatter.read(file))
+
                 return artifact
 
             setattr(wrapper, "__signature__", inspect.signature(func))

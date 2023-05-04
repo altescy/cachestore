@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import bz2
+import gzip
 import importlib
 import inspect
+import lzma
 import pkgutil
 import string
 import sys
 from types import ModuleType
-from typing import Any
+from typing import Any, Callable
 
 
 def b62encode(data: bytes) -> str:
@@ -86,3 +89,13 @@ def find_variable_path(obj: Any) -> str | None:
         except AttributeError:
             pass
     return None
+
+
+def detect_open_fn(file: Any) -> Callable:
+    if isinstance(file, gzip.GzipFile):
+        return gzip.open
+    if isinstance(file, bz2.BZ2File):
+        return bz2.open
+    if isinstance(file, lzma.LZMAFile):
+        return lzma.open
+    return open

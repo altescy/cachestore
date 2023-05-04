@@ -39,7 +39,7 @@ class ListCommand(Subcommand):
 
         table = Table(columns=["name", "function", "filename", "cache", "last_executed_at"])
         for funcinfo in cache.funcinfos():
-            cacheinfos = list(cache.info(funcinfo))
+            cacheinfos = list(info for _, info in cache.info(funcinfo))
             table.add(
                 {
                     "name": args.cache,
@@ -72,7 +72,7 @@ class DetailsCommand(ListCommand):
         if args.include_package:
             import_modules(args.include_package)
 
-        table = Table(columns=["cache", "function", "filename", "params", "executed_at", "expired_at"])
+        table = Table(columns=["cache", "function", "filename", "params", "exec", "executed_at", "expired_at"])
 
         cache = safe_import_object(args.cache)
         assert isinstance(cache, Cache)
@@ -90,13 +90,14 @@ class DetailsCommand(ListCommand):
 
         funcinfo = funcinfos[funcname]
 
-        for cacheinfo in cache.info(funcinfo):
+        for key, cacheinfo in cache.info(funcinfo):
             table.add(
                 {
                     "cache": args.cache,
                     "function": funcinfo.name,
                     "filename": str(funcinfo.filename.relative_to(Path.cwd())),
                     "params": ", ".join(f"{k}={v}" for k, v in cacheinfo.parameters.items()),
+                    "exec": key.split(".", 1)[1][:8],
                     "executed_at": cacheinfo.executed_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "expired_at": (
                         cacheinfo.expired_at.strftime("%Y-%m-%d %H:%M:%S")

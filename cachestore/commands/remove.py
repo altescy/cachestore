@@ -18,7 +18,7 @@ class RemoveCommand(Subcommand):
             "--function",
             action="append",
             default=[],
-            help="function names to remove cache",
+            help="function names to remove cache formatted like: function[@exec]",
         )
         self.parser.add_argument(
             "-a",
@@ -59,9 +59,14 @@ class RemoveCommand(Subcommand):
 
         if funcnames:
             for funcname in funcnames:
-                if args.all or funcname in funcinfos:
+                if "@" in funcname:
+                    parsed_funcname, execution_prefix = funcname.split("@", 1)
+                else:
+                    parsed_funcname = funcname
+                    execution_prefix = None
+                if args.all or parsed_funcname in funcinfos:
                     print(f"remove: {funcname}")
-                    cache.remove(funcinfos[funcname])
+                    cache.remove(funcinfos[parsed_funcname], execution_prefix=execution_prefix)
                 else:
                     print(f"skip  : {funcname}")
         else:

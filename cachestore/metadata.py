@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import ast
 import datetime
 import inspect
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
+from cachestore.common import ASTNormalizer
 from cachestore.hashers import Hasher
 
 
@@ -24,6 +27,8 @@ class FunctionInfo(NamedTuple):
         name = f"{modulename}.{func.__qualname__}"
         lines, _ = inspect.getsourcelines(func)
         source = "".join(lines)
+        with suppress(SyntaxError):
+            source = ast.dump(ASTNormalizer().visit(ast.parse(source)))
         return cls(name, filename, source)
 
     def hash(self, hasher: Hasher) -> str:

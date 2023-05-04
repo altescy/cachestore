@@ -216,9 +216,8 @@ class Cache:
         prefix = func.hash(self.hasher)
         for key in self.storage.filter(prefix=prefix):
             metakey = self._get_metakey(key)
-            execkey = key.split(".", 1)[-1]
             with self.storage.open(metakey, "rt") as file:
-                yield execkey, CacheInfo.from_dict(json.load(file))
+                yield key, CacheInfo.from_dict(json.load(file))
 
     def prune(self) -> None:
         for key in self.storage.all():

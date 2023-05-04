@@ -90,14 +90,14 @@ class DetailsCommand(ListCommand):
 
         funcinfo = funcinfos[funcname]
 
-        for execkey, cacheinfo in cache.info(funcinfo):
+        for key, cacheinfo in cache.info(funcinfo):
             table.add(
                 {
                     "cache": args.cache,
                     "function": funcinfo.name,
                     "filename": str(funcinfo.filename.relative_to(Path.cwd())),
                     "params": ", ".join(f"{k}={v}" for k, v in cacheinfo.parameters.items()),
-                    "exec": execkey[:8],
+                    "exec": key.split(".", 1)[1][:8],
                     "executed_at": cacheinfo.executed_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "expired_at": (
                         cacheinfo.expired_at.strftime("%Y-%m-%d %H:%M:%S")

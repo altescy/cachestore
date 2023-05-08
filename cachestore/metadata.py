@@ -64,61 +64,11 @@ class ExecutionInfo(NamedTuple):
         arguments: list[tuple[str | None, Any]] = [(None, v) for v in args]
         arguments += list(kwargs.items())
 
-        position = 0
-        params: dict[str, Any] = {}
         try:
-            for key, param in signature.parameters.items():
-                if position >= len(arguments):
-                    if param.default != inspect.Parameter.empty:
-                        params[key] = param.default
-                    elif param.kind == inspect.Parameter.VAR_POSITIONAL:
-                        params[key] = []
-                    elif param.kind == inspect.Parameter.VAR_KEYWORD:
-                        params[key] = {}
-                    else:
-                        raise AssertionError("There are some missing arguments.")
-                elif param.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    if arguments[position][0] is None and param.default == inspect.Parameter.empty:
-                        params[key] = arguments[position][1]
-                        position += 1
-                elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
-                    if key == arguments[position][0] or arguments[position][0] is None:
-                        params[key] = arguments[position][1]
-                        position += 1
-                    elif param.default != inspect.Parameter.empty:
-                        params[key] = param.default
-                elif param.kind == inspect.Parameter.VAR_POSITIONAL:
-                    params[key] = []
-                    while (
-                        position < len(arguments)
-                        and arguments[position][0] is None
-                        and arguments[position][0] not in signature.parameters
-                    ):
-                        params[key].append(arguments[position][1])
-                        position += 1
-                elif param.kind == inspect.Parameter.KEYWORD_ONLY:
-                    if key == arguments[position][0]:
-                        params[key] = arguments[position][1]
-                        position += 1
-                    elif param.default != inspect.Parameter.empty:
-                        params[key] = param.default
-                elif param.kind == inspect.Parameter.VAR_KEYWORD:
-                    if key not in params:
-                        params[key] = {}
-                    while position < len(arguments) and arguments[position][0] not in signature.parameters:
-                        params[key][arguments[position][0]] = arguments[position][1]
-                        position += 1
-                    params[key] = dict(sorted(params[key].items()))
-                else:
-                    raise AssertionError("This statement will be never executed.")
-
-            for extrakey, value in arguments[position:]:
-                assert extrakey is not None, extrakey
-                assert extrakey not in params, extrakey
-                params[extrakey] = value
-
-            assert list(params.keys()) == list(signature.parameters.keys()), f"{params=}, {signature.parameters=}"
-        except AssertionError as err:
+            bound_args = signature.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            params = bound_args.arguments
+        except TypeError as err:
             raise ValueError(
                 f"Invalid arguments of {func.__module__}.{func.__name__}:\n\t"
                 f"Signature : {signature}\n\t"

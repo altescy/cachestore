@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-import pickle
 from configparser import SectionProxy
 from typing import IO, Any, ClassVar, Iterator, Type, TypeVar
+
+try:
+    import dill as pickle
+except ModuleNotFoundError:
+    import pickle  # type: ignore[no-redef]
 
 from cachestore.formatters.formatter import Formatter
 from cachestore.util import detect_open_fn

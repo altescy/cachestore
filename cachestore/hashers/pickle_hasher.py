@@ -1,8 +1,12 @@
 import hashlib
 import io
-import pickle
 from configparser import SectionProxy
 from typing import Any, Type, TypeVar
+
+try:
+    import dill as pickle
+except ModuleNotFoundError:
+    import pickle  # type: ignore[no-redef]
 
 from cachestore.hashers.hasher import Hasher
 from cachestore.util import b62encode

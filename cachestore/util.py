@@ -79,7 +79,7 @@ def safe_import_object(path: str) -> Any:
 
 def find_variable_path(obj: Any) -> str | None:
     for modulename, module in list(sys.modules.items()):
-        if hasattr(module, "__file__"):
+        if hasattr(module, "__file__") and module.__file__:
             modulename = inspect.getmodulename(inspect.getabsfile(module)) or modulename
         with suppress(AttributeError):
             for varname, value in module.__dict__.items():

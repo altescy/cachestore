@@ -17,6 +17,7 @@ from cachestore.util import find_variable_path
 logger = getLogger(__name__)
 
 T = TypeVar("T")
+T_Callable = TypeVar("T_Callable", bound=Callable)
 
 
 class Cache:
@@ -106,8 +107,8 @@ class Cache:
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
         formatter: Formatter | None = None,
         disable: bool | None = None,
-    ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-        def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    ) -> Callable[[T_Callable], T_Callable]:
+        def decorator(func: T_Callable) -> T_Callable:
             funcinfo = FunctionInfo.build(func)
             self._function_registry[funcinfo.hash(self.hasher)] = funcinfo
 
@@ -122,7 +123,7 @@ class Cache:
                 function_settings.formatter = formatter
 
             @wraps(func)
-            def wrapper(*args: Any, **kwargs: Any) -> T:
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
                 disable = self.disable if function_settings.disable is None else function_settings.disable
                 ignore = function_settings.ignore
                 expired_at = function_settings.expired_at
@@ -153,7 +154,7 @@ class Cache:
                 if storage.exists(key) and (expired_at is None or expired_at > executed_at):
                     logger.info("[%s] Cache exists", funcinfo.name)
                     with self.storage.open(key, formatter.READ_MODE) as file:
-                        artifact = cast(T, formatter.read(file))
+                        artifact = formatter.read(file)
                 else:
                     logger.info("[%s] Cache does not exists.", funcinfo.name)
                     artifact = func(*args, **kwargs)
@@ -175,7 +176,7 @@ class Cache:
                     # reopen artifact beacause if artifact is iterator,
                     # it is consumed when saving cache.
                     with self.storage.open(key, formatter.READ_MODE) as file:
-                        artifact = cast(T, formatter.read(file))
+                        artifact = formatter.read(file)
 
                 return artifact
 
@@ -183,7 +184,7 @@ class Cache:
             setattr(wrapper, "__annotations__", func.__annotations__)
             setattr(wrapper, "__cachesore_funcinfo", funcinfo)
 
-            return wrapper
+            return cast(T_Callable, wrapper)
 
         return decorator
 

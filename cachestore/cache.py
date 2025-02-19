@@ -1,22 +1,25 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import inspect
 import json
+import types
 from functools import wraps
 from logging import getLogger
-from typing import Any, Callable, Iterator, TypeVar, cast
+from typing import Any, Callable, Iterable, Iterator, TypeVar, cast
 
 from cachestore.config import CacheSettings, Config
 from cachestore.formatters import Formatter
 from cachestore.hashers import Hasher
 from cachestore.metadata import CacheInfo, ExecutionInfo, FunctionInfo
 from cachestore.storages import Storage
-from cachestore.util import find_variable_path
+from cachestore.util import async_to_sync_iterator, find_variable_path
 
 logger = getLogger(__name__)
 
 T = TypeVar("T")
+F = TypeVar("F", bound=Callable)
 
 
 class Cache:
@@ -106,8 +109,8 @@ class Cache:
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
         formatter: Formatter | None = None,
         disable: bool | None = None,
-    ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-        def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    ) -> Callable[[F], F]:
+        def decorator(func: F) -> F:
             funcinfo = FunctionInfo.build(func)
             self._function_registry[funcinfo.hash(self.hasher)] = funcinfo
 
@@ -121,22 +124,70 @@ class Cache:
             if formatter is not None:
                 function_settings.formatter = formatter
 
-            @wraps(func)
-            def wrapper(*args: Any, **kwargs: Any) -> T:
-                disable = self.disable if function_settings.disable is None else function_settings.disable
-                ignore = function_settings.ignore
+            empty = object()
+
+            def _cache_exists(key: str) -> bool:
                 expired_at = function_settings.expired_at
                 executed_at = datetime.datetime.now()
+                return self.storage.exists(key) and (expired_at is None or expired_at > executed_at)
+
+            def _save_cache(
+                key: str,
+                metakey: str,
+                execinfo: ExecutionInfo,
+                executed_at: datetime.datetime,
+                artifact: Any,
+            ) -> None:
+                expired_at = function_settings.expired_at
+                formatter = function_settings.formatter or self.formatter
+
+                logger.info("[%s] Store new artifact.", funcinfo.name)
+                with self.storage.open(key, formatter.WRITE_MODE) as file:
+                    formatter.write(file, artifact)
+
+                logger.info("[%s] Export metadata.", funcinfo.name)
+                cacheinfo = CacheInfo(
+                    function=funcinfo,
+                    parameters=execinfo.params,
+                    expired_at=expired_at,
+                    executed_at=executed_at,
+                )
+                with self.storage.open(metakey, "wt") as file:
+                    json.dump(cacheinfo.to_dict(), file)
+
+            def _load_cache(key: str) -> Any:
+                formatter = function_settings.formatter or self.formatter
+                with self.storage.open(key, formatter.READ_MODE) as file:
+                    artifact = formatter.read(file)
+                return artifact
+
+            async def _coro_wrapper(
+                key: str,
+                metakey: str,
+                execinfo: ExecutionInfo,
+                executed_at: datetime.datetime,
+                value: Any = empty,
+            ) -> Any:
+                if value is empty:
+                    value = _load_cache(key)
+                else:
+                    value = await value
+                    _save_cache(key, metakey, execinfo, executed_at, value)
+                return value
+
+            @wraps(func)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                executed_at = datetime.datetime.now()
+                disable = self.disable if function_settings.disable is None else function_settings.disable
 
                 storage = self.storage
-                formatter = function_settings.formatter or self.formatter
 
                 if disable:
                     logger.info("[%s] Disable cache.", funcinfo.name)
                     return func(*args, **kwargs)
 
                 execinfo = ExecutionInfo.build(func, *args, **kwargs)
-                for paramname in ignore:
+                for paramname in function_settings.ignore:
                     del execinfo.params[paramname]
 
                 key = self._get_key(funcinfo, execinfo)
@@ -150,42 +201,80 @@ class Cache:
                         storage.remove(key)
                         storage.remove(metakey)
 
-                if storage.exists(key) and (expired_at is None or expired_at > executed_at):
+                if _cache_exists(key):
                     logger.info("[%s] Cache exists", funcinfo.name)
-                    with self.storage.open(key, formatter.READ_MODE) as file:
-                        artifact = cast(T, formatter.read(file))
+                    if asyncio.iscoroutinefunction(func):
+                        return _coro_wrapper(key, metakey, execinfo, executed_at)
+                    else:
+                        return _load_cache(key)
                 else:
                     logger.info("[%s] Cache does not exists.", funcinfo.name)
                     artifact = func(*args, **kwargs)
+                    if isinstance(artifact, types.CoroutineType):
+                        return _coro_wrapper(key, metakey, execinfo, executed_at, artifact)
 
-                    logger.info("[%s] Store new artifact.", funcinfo.name)
-                    with storage.open(key, formatter.WRITE_MODE) as file:
-                        formatter.write(file, artifact)
+                    _save_cache(key, metakey, execinfo, executed_at, artifact)
 
-                    logger.info("[%s] Export metadata.", funcinfo.name)
-                    cacheinfo = CacheInfo(
-                        function=funcinfo,
-                        parameters=execinfo.params,
-                        expired_at=expired_at,
-                        executed_at=executed_at,
-                    )
-                    with storage.open(metakey, "wt") as file:
-                        json.dump(cacheinfo.to_dict(), file)
+                    if asyncio.iscoroutinefunction(artifact):
+                        return _coro_wrapper(key, metakey, execinfo, executed_at, artifact)
 
-                    # reopen artifact beacause if artifact is iterator,
-                    # it is consumed when saving cache.
-                    with self.storage.open(key, formatter.READ_MODE) as file:
-                        artifact = cast(T, formatter.read(file))
+                    return _load_cache(key)
 
-                return artifact
+            @wraps(func)
+            async def asyncgen_wrapper(*args: Any, **kwargs: Any) -> Any:
+                assert inspect.isasyncgenfunction(func)
+                executed_at = datetime.datetime.now()
+                disable = self.disable if function_settings.disable is None else function_settings.disable
+
+                storage = self.storage
+
+                if disable:
+                    logger.info("[%s] Disable cache.", funcinfo.name)
+                    async for value in func(*args, **kwargs):
+                        yield value
+                else:
+                    execinfo = ExecutionInfo.build(func, *args, **kwargs)
+                    for paramname in function_settings.ignore:
+                        del execinfo.params[paramname]
+
+                    key = self._get_key(funcinfo, execinfo)
+                    metakey = self._get_metakey(key)
+
+                    if storage.exists(metakey):
+                        with storage.open(metakey, "rt") as file:
+                            cacheinfo = CacheInfo.from_dict(json.load(file))
+                        if cacheinfo.expired_at is not None and cacheinfo.expired_at <= executed_at:
+                            logger.info("[%s] Cache was expired, so remove existing artifact.", funcinfo.name)
+                            storage.remove(key)
+                            storage.remove(metakey)
+
+                    if _cache_exists(key):
+                        logger.info("[%s] Cache exists", funcinfo.name)
+                        artifact = _load_cache(key)
+                    else:
+                        logger.info("[%s] Cache does not exists.", funcinfo.name)
+                        results = async_to_sync_iterator(func(*args, **kwargs))
+
+                        _save_cache(key, metakey, execinfo, executed_at, results)  # type: ignore[arg-type]
+
+                        # reopen artifact beacause if artifact is iterator,
+                        # it is consumed when saving cache.
+                        artifact = _load_cache(key)
+
+                    assert isinstance(artifact, Iterable)
+                    for result in artifact:
+                        yield result
 
             setattr(wrapper, "__signature__", inspect.signature(func))
             setattr(wrapper, "__annotations__", func.__annotations__)
             setattr(wrapper, "__cachesore_funcinfo", funcinfo)
 
-            return wrapper
+            if inspect.isasyncgenfunction(func):
+                return cast(F, asyncgen_wrapper)
 
-        return decorator
+            return cast(F, wrapper)
+
+        return cast(Callable[[F], F], decorator)
 
     def exists(self, func: Callable[..., Any] | FunctionInfo) -> bool:
         current = datetime.datetime.now()

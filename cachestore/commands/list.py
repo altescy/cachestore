@@ -46,9 +46,9 @@ class ListCommand(Subcommand):
                     "function": funcinfo.name,
                     "filename": str(funcinfo.filename.relative_to(Path.cwd())),
                     "cache": "\033[32m✓\033[39m" if cache.exists(funcinfo) else "",
-                    "last_executed_at": max(info.executed_at for info in cacheinfos).strftime("%Y-%m-%d %H:%M:%S")
-                    if cacheinfos
-                    else "",
+                    "last_executed_at": (
+                        max(info.executed_at for info in cacheinfos).strftime("%Y-%m-%d %H:%M:%S") if cacheinfos else ""
+                    ),
                 }
             )
 
@@ -100,12 +100,14 @@ class DetailsCommand(ListCommand):
                     "exec": key.split(".", 1)[1][:8],
                     "executed_at": cacheinfo.executed_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "expired_at": (
-                        cacheinfo.expired_at.strftime("%Y-%m-%d %H:%M:%S")
-                        if cacheinfo.expired_at > datetime.datetime.now()
-                        else f"\033[31m{cacheinfo.expired_at.strftime('%Y-%m-%d %H:%M:%S')}\033[39m"
-                    )
-                    if cacheinfo.expired_at
-                    else "",
+                        (
+                            cacheinfo.expired_at.strftime("%Y-%m-%d %H:%M:%S")
+                            if cacheinfo.expired_at > datetime.datetime.now()
+                            else f"\033[31m{cacheinfo.expired_at.strftime('%Y-%m-%d %H:%M:%S')}\033[39m"
+                        )
+                        if cacheinfo.expired_at
+                        else ""
+                    ),
                 }
             )
 

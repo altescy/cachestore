@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cachestore"
-version = "0.3.1"
+version = "0.4.0"
 description = "Function Cache Management Tool for Python"
 authors = ["altescy <me@altescy.jp>"]
 license = "MIT License"

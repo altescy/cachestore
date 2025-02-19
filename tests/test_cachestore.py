@@ -2,4 +2,4 @@ import cachestore
 
 
 def test_version() -> None:
-    assert cachestore.__version__ == "0.3.1"
+    assert cachestore.__version__ == "0.4.0"

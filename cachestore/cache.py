@@ -253,7 +253,6 @@ class Cache:
                         artifact = _load_cache(key)
                     else:
                         logger.info("[%s] Cache does not exists.", funcinfo.name)
-                        # results = [x async for x in func(*args, **kwargs)]
                         results = async_to_sync_iterator(func(*args, **kwargs))
 
                         _save_cache(key, metakey, execinfo, executed_at, results)  # type: ignore[arg-type]

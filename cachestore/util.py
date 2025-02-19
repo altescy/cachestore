@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import bz2
 import gzip
 import importlib
@@ -8,11 +9,15 @@ import lzma
 import pkgutil
 import string
 import sys
+import threading
 import typing
 from collections.abc import AsyncIterator
 from contextlib import suppress
+from queue import Queue
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any, Callable, Iterator, TypeVar, Union, cast
+
+T = TypeVar("T")
 
 
 def b62encode(data: bytes) -> str:
@@ -103,3 +108,34 @@ def detect_open_fn(file: Any) -> Callable:
 def returns_async_iterator(obj: Any) -> bool:
     signature = inspect.signature(obj)
     return bool((typing.get_origin(signature.return_annotation) or signature.return_annotation) == AsyncIterator)
+
+
+def async_to_sync_iterator(async_iter: AsyncIterator[T]) -> Iterator[T]:
+    class _End: ...
+
+    queue = Queue[Union[T, _End]]()
+    stop_event = threading.Event()
+
+    async def producer() -> None:
+        try:
+            async for item in async_iter:
+                queue.put(item)
+            queue.put(_End())
+        finally:
+            stop_event.set()
+
+    def run_event_loop() -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(producer())
+
+    thread = threading.Thread(target=run_event_loop, daemon=True)
+    thread.start()
+
+    while True:
+        item = queue.get_nowait() if not queue.empty() else queue.get()
+        if isinstance(item, _End):
+            break
+        yield item
+
+    stop_event.wait()

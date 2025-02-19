@@ -15,7 +15,7 @@ from collections.abc import AsyncIterator
 from contextlib import suppress
 from queue import Queue
 from types import ModuleType
-from typing import Any, Callable, Iterator, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, TypeVar, Union
 
 T = TypeVar("T")
 

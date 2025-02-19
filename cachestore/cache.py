@@ -168,7 +168,6 @@ class Cache:
                 executed_at: datetime.datetime,
                 value: Any = empty,
             ) -> Any:
-                is_aiter = False
                 if value is empty:
                     value = _load_cache(key)
                 else:
@@ -182,7 +181,6 @@ class Cache:
                 disable = self.disable if function_settings.disable is None else function_settings.disable
 
                 storage = self.storage
-                formatter = function_settings.formatter or self.formatter
 
                 if disable:
                     logger.info("[%s] Disable cache.", funcinfo.name)
@@ -229,7 +227,6 @@ class Cache:
                 disable = self.disable if function_settings.disable is None else function_settings.disable
 
                 storage = self.storage
-                formatter = function_settings.formatter or self.formatter
 
                 if disable:
                     logger.info("[%s] Disable cache.", funcinfo.name)

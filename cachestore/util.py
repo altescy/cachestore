@@ -10,7 +10,6 @@ import pkgutil
 import string
 import sys
 import threading
-import typing
 from collections.abc import AsyncIterator
 from contextlib import suppress
 from queue import Queue
@@ -103,11 +102,6 @@ def detect_open_fn(file: Any) -> Callable:
     if isinstance(file, lzma.LZMAFile):
         return lzma.open
     return open
-
-
-def returns_async_iterator(obj: Any) -> bool:
-    signature = inspect.signature(obj)
-    return bool((typing.get_origin(signature.return_annotation) or signature.return_annotation) == AsyncIterator)
 
 
 def async_to_sync_iterator(async_iter: AsyncIterator[T]) -> Iterator[T]:

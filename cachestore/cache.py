@@ -17,6 +17,7 @@ from cachestore.util import find_variable_path
 logger = getLogger(__name__)
 
 T = TypeVar("T")
+F = TypeVar("F", bound=Callable)
 
 
 class Cache:
@@ -106,7 +107,7 @@ class Cache:
         expire: int | datetime.timedelta | datetime.date | datetime.datetime | None = None,
         formatter: Formatter | None = None,
         disable: bool | None = None,
-    ) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    ) -> Callable[[F], F]:
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             funcinfo = FunctionInfo.build(func)
             self._function_registry[funcinfo.hash(self.hasher)] = funcinfo
@@ -122,7 +123,7 @@ class Cache:
                 function_settings.formatter = formatter
 
             @wraps(func)
-            def wrapper(*args: Any, **kwargs: Any) -> T:
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
                 disable = self.disable if function_settings.disable is None else function_settings.disable
                 ignore = function_settings.ignore
                 expired_at = function_settings.expired_at
@@ -185,7 +186,7 @@ class Cache:
 
             return wrapper
 
-        return decorator
+        return cast(Callable[[F], F], decorator)
 
     def exists(self, func: Callable[..., Any] | FunctionInfo) -> bool:
         current = datetime.datetime.now()

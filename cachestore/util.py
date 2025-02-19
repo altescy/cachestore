@@ -8,6 +8,8 @@ import lzma
 import pkgutil
 import string
 import sys
+import typing
+from collections.abc import AsyncIterator
 from contextlib import suppress
 from types import ModuleType
 from typing import Any, Callable
@@ -96,3 +98,8 @@ def detect_open_fn(file: Any) -> Callable:
     if isinstance(file, lzma.LZMAFile):
         return lzma.open
     return open
+
+
+def returns_async_iterator(obj: Any) -> bool:
+    signature = inspect.signature(obj)
+    return bool((typing.get_origin(signature.return_annotation) or signature.return_annotation) == AsyncIterator)
